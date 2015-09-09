@@ -4,8 +4,8 @@ Make sure you have an Arduino or equivalent microprocessor.
 
 ### Must have
 
-|#|Amount|Description|Supplier NL|Cost|
-|-:|----:|:---------|:-------|---:|
+|No|Amount|Description|Supplier NL|Cost|
+| ------------: | ------------: | :------------ | :------------ | ------------: |
 |1|1|Heating foil|[Conrad](https://www.conrad.nl/nl/thermo-verwarmingsfolie-zelfklevend-12-vdc-12-vac-22-w-veiligheidstype-ipx4-90-mm-1216623.html)|20.68|
 |2|1|Water proof temperature sensor (*1)|[HobbyElectronica](http://www.hobbyelectronica.nl/product/ds18b20-waterdicht/), [iPrototype](https://iprototype.nl/products/components/sensors/waterproof-tmp-sensor-10k)|2.95|
 |3|1|Rotary encoder|[iPrototype](https://iprototype.nl/products/components/buttons-switches/rotary-encoder-rgb), [Farnell](http://nl.farnell.com/alps/ec12e1240406/encoder-vertical-12mm-12det-12ppr/dp/2065052), [EOO](http://www.eoo-bv.nl/index.php?_a=viewProd&productId=9553)|0.60|
@@ -20,8 +20,6 @@ Make sure you have an Arduino or equivalent microprocessor.
 |12|1|I2C LCD display|[iPrototype](https://iprototype.nl/products/components/led-lcd/lcd16x2-I2C-BL), ([HobbyElectronica](http://www.hobbyelectronica.nl/product/hd44780-16x2-karakters-lcd-display-module-blauw-backlight/) + [HobbyElectronica](http://www.hobbyelectronica.nl/product/i2c-lcd-interface-voor-16x2-en-20x4-displays/))|16.95|
 |13|1|MOSFET|[Farnell](http://nl.farnell.com/stmicroelectronics/stp36nf06l/mosfet-n-logic-to-220/dp/9935614?CMP=i-bf9f-00001000), [EOO](http://www.eoo-bv.nl/index.php?_a=viewProd&productId=1279)|0.98|
 |14|1|12V 80 mm Axial Fan|[EOO](http://www.eoo-bv.nl/index.php?_a=viewProd&productId=13244), [Farnell](http://nl.farnell.com/bisonic/sp802512l-03/fan-80x25mm-12vdc/dp/1832326)|8.99|
-|--|--|---|---|---|
-|||*Total costs*|||
 
 > (*1) In case you choose for the DS18B20 temperature sensor, you will also need a [4.7K ohm resistor](https://www.iprototype.nl/products/components/resistors/4K7) 
 
