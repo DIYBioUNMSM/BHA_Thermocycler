@@ -170,6 +170,12 @@ void setup() {
   //on interrupt 0 (pin 2), or interrupt 1 (pin 3) 
   attachInterrupt(0, updateEncoder, CHANGE); 
   attachInterrupt(1, updateEncoder, CHANGE);  
+
+  // fan and heating and set low
+  pinMode(fanPin, OUTPUT);
+  pinMode(heatPin, OUTPUT);
+  digitalWrite(fanPin, LOW);
+  digitalWrite(heatPin, LOW);
   
   // Initialize the LCD and print a message
   lcd.init();
@@ -478,6 +484,10 @@ void machineUpdate(uint16_t dt) {
     currentStageStartTime = 0; // Beginning of the current Stage
     currentState = 0;    // In each stage, go through 3 states: Ramping, Steady, Cooling
     toggleCooling = 0;   // Toggle to skip or execute Stage 3: Cooling
+
+    // Stop heating and fan
+    digitalWrite(fanPin, LOW);
+    digitalWrite(heatPin, LOW);
     
     // Go back to the first state
     stateChange(STATE_DENAT_TIMEPROG);
@@ -493,6 +503,7 @@ void machineUpdate(uint16_t dt) {
     // RAMPING UP
     if(currentTemp < stageTemp){
       digitalWrite(heatPin, HIGH);
+      digitalWrite(fanPin, LOW);
     }
     else {
       Serial.println(F("Reached Steady State"));
