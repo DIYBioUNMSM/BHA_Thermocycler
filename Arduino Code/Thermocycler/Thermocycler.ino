@@ -57,8 +57,8 @@ int coolSettings[3] = { 1, 0, 0}; // Toggle to enable fan / cooling after stage 
 int cycleSetting = 0;     // Max number of cycles
 
 // Pins
-#define fanPin 5       // The mosfet that drives the 80mm fan is connected to pin 5
-#define heatPin 6      // Pin for the mosfet that controls the heat pad
+#define fanPin 6       // The mosfet that drives the 80mm fan is connected to pin 6
+#define heatPin 5      // Pin for the mosfet that controls the heat pad
 
 // Temperature read
 int val;               // Create an integer variable to temporarily store the thermistor read
