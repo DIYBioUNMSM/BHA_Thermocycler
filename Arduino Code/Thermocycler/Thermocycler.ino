@@ -68,9 +68,9 @@ double currentTemp;    // Variable to hold the current temperature value
 int stageTemp = 0;      // Target temperature of the current stage
 int stageTime = 0;      // Duration of current stage
 int cycleCounter = 0;   // Counter of number of cycles completed
-int currentStage = 0;       // Current stage
+int currentState = 0;   // 3 states: Denat, Anneal and Elon
 unsigned long currentStageStartTime = 0; // Beginning of the current Stage
-int currentState = 0;   // In each stage, go through 3 states: Ramping, Steady, Cooling
+int currentStage = 0;   // In each stage, go through 3 states: Ramping, Steady, Cooling
 int toggleCooling = 0;  // Toggle to skip or execute Stage 3: Cooling
 
 /* *******************************************************
@@ -331,7 +331,7 @@ void machineUpdate(uint16_t dt) {
     if(encoderValue < 0) encoderValue = 0;
     if(encoderValue > 100) encoderValue = 100;
   
-    tempSettings[2] = encoderValue;
+    tempSettings[1] = encoderValue;
 
     // Display the settings on the LCD
     lcd.setCursor(0,1);
@@ -355,13 +355,13 @@ void machineUpdate(uint16_t dt) {
     if(encoderValue > 120) encoderValue = 120;
   
     // Convert encoder value to seconds  
-    timeSettings[3] = encoderValue;
+    timeSettings[2] = encoderValue;
 
     // Display time setting on the LCD
     lcd.setCursor(0,0);
     lcd.print(F("Elon Time"));
     lcd.setCursor(11,0);
-    lcd.print(time(timeSettings[3]));    
+    lcd.print(time(timeSettings[2]));    
 
     // In case the button is pressed, continue to next state
     if(buttonState > 0) {
@@ -377,7 +377,7 @@ void machineUpdate(uint16_t dt) {
     if(encoderValue < 0) encoderValue = 0;
     if(encoderValue > 100) encoderValue = 100;
   
-    tempSettings[3] = encoderValue;
+    tempSettings[2] = encoderValue;
 
     // Display the settings on the LCD
     lcd.setCursor(0,1);
@@ -413,6 +413,9 @@ void machineUpdate(uint16_t dt) {
       stateChange(STATE_CYCLING);
       lcd.clear(); // reset LCD screen
       encoderValue = 0; // reset encoderValue
+      currentState = 1; // start at first state ramp up, steady, cool
+      currentStage = 1; // start at first stage denat, anneal, elon
+      cycleCounter = 1; // start at first cycle
     }     
   } 
  
@@ -430,10 +433,36 @@ void machineUpdate(uint16_t dt) {
       lcd.print(cycleCounter);
       lcd.print("/");
       lcd.print(cycleSetting);
+      lcd.print(" ");
+      if(currentStage == 0) lcd.print("DENAT");
+      if(currentStage == 1) lcd.print("ANNEAL");
+      if(currentStage == 2) lcd.print("ELON");
       lcd.setCursor(0,1);
       lcd.print(F("Temp "));
       lcd.print(currentTemp);
+      lcd.print(" / ");
+      lcd.print(stageTemp);
     }
+    
+    /* Debug info
+    Serial.print("stage"); Serial.println(currentStage); // denat, anneal, elon
+    Serial.print("state"); Serial.println(currentState); // ramp up, steady, cool
+    Serial.print("cycle"); Serial.println(cycleCounter);
+    Serial.print("stageTemp"); Serial.println(stageTemp);
+    
+    Serial.print("tempsettings 0");
+    Serial.print(tempSettings[0]);
+    Serial.print("tempsettings 1");
+    Serial.print(tempSettings[1]);
+    Serial.print("tempsettings 2");
+    Serial.print(tempSettings[2]);
+    Serial.print("timesettings 0");
+    Serial.print(timeSettings[0]);
+    Serial.print("timesettings 1");
+    Serial.print(timeSettings[1]);
+    Serial.print("timesettings 2");
+    Serial.print(timeSettings[2]);
+    */
 
     if(cycleCounter < cycleSetting) { // Check whether we have not completed all cycles
       // If not, go through 3 PCR stages: Denat, Anneal and Elon
@@ -544,7 +573,7 @@ void machineUpdate(uint16_t dt) {
       digitalWrite(fanPin, LOW);
       
       currentState = 1; // Back to RAMPING UP state
-      currentStage++; // Go to the next stage
+      currentStage ++; // Go from Denat, to Anneal to Elon
     }
   }
 
