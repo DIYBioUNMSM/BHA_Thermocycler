@@ -36,6 +36,7 @@
 #include <math.h>   // loads a library with more advanced math functions
 #include <Wire.h>   // Needed for I2C connection with LCD screen
 #include "LiquidCrystal_I2C.h" // Needed for operating the LCD screen
+#include <OneWire.h>// Needed for the temperature sensors
 /* *******************************************************
 */
 
@@ -57,12 +58,18 @@ int coolSettings[3] = { 1, 0, 0}; // Toggle to enable fan / cooling after stage 
 int cycleSetting = 0;     // Max number of cycles
 
 // Pins
-#define fanPin 6       // The mosfet that drives the 80mm fan is connected to pin 6
-#define heatPin 5      // Pin for the mosfet that controls the heat pad
+#define fanPin 5       // The mosfet that drives the 80mm fan is connected to pin 6
+#define heatPin 6      // Pin for the mosfet that controls the heating element
+#define lidPin 7       // Pin for the mosfet that controls the lid heater
 
 // Temperature read
 int val;               // Create an integer variable to temporarily store the thermistor read
 double currentTemp;    // Variable to hold the current temperature value
+int TempPin1 = 9;      // DS18S20 Signal pin on digital 9
+int TempPin2 = 10;     // DS18S20 Signal pin on digital 10
+
+OneWire ds1(TempPin1);
+OneWire ds2(TempPin2);
 
 // PCR cycling variables
 int stageTemp = 0;      // Target temperature of the current stage
@@ -72,6 +79,7 @@ int currentState = 0;   // 3 states: Denat, Anneal and Elon
 unsigned long currentStageStartTime = 0; // Beginning of the current Stage
 int currentStage = 0;   // In each stage, go through 3 states: Ramping, Steady, Cooling
 int toggleCooling = 0;  // Toggle to skip or execute Stage 3: Cooling
+boolean showtime = false;
 
 /* *******************************************************
 */
@@ -174,8 +182,10 @@ void setup() {
   // fan and heating and set low
   pinMode(fanPin, OUTPUT);
   pinMode(heatPin, OUTPUT);
+  pinMode(lidPin, OUTPUT);
   digitalWrite(fanPin, LOW);
   digitalWrite(heatPin, LOW);
+  digitalWrite(lidPin, LOW);
   
   // Initialize the LCD and print a message
   lcd.init();
@@ -215,8 +225,12 @@ void loop() {
   lastTick = time;
 
   // Read temperature
-  val=analogRead(0);            //Read the analog port 0 and store the value in val
-  currentTemp=Thermister(val);  //Runs the fancy math function on the raw analog value
+  //val=analogRead(0);            //Read the analog port 0 and store the value in val
+  //currentTemp=Thermister(val);  //Runs the fancy math function on the raw analog value
+  
+  if(state == STATE_CYCLING) {
+    currentTemp = getTemp1();
+  }
   
   // Print temperature to computer via Serial
   Serial.print("Temperature: ");
@@ -429,18 +443,19 @@ void machineUpdate(uint16_t dt) {
       // Print to LCD
       lcd.clear();
       lcd.setCursor(0,0);
-      lcd.print(F("Cycle "));
+      lcd.print(F("C "));
       lcd.print(cycleCounter);
       lcd.print("/");
       lcd.print(cycleSetting);
       lcd.print(" ");
-      if(currentStage == 0) lcd.print("DENAT");
-      if(currentStage == 1) lcd.print("ANNEAL");
-      if(currentStage == 2) lcd.print("ELON");
+      if(currentStage == 0) lcd.print("D ");
+      if(currentStage == 1) lcd.print("A ");
+      if(currentStage == 2) lcd.print("E ");
+      if(showtime) { lcd.print(round((stageTime-(millis()-currentStageStartTime))/1000)); }
       lcd.setCursor(0,1);
       lcd.print(F("Temp "));
-      lcd.print(currentTemp);
-      lcd.print(" / ");
+      lcd.print(round(currentTemp));
+      lcd.print("/");
       lcd.print(stageTemp);
     }
     
@@ -530,13 +545,25 @@ void machineUpdate(uint16_t dt) {
     
   if(currentState == 1) {
     // RAMPING UP
-    if(currentTemp < stageTemp){
+    if(currentTemp < stageTemp - 10) {
       digitalWrite(heatPin, HIGH);
+      digitalWrite(fanPin, LOW);   
+      showtime = false;   
+    } 
+    else if(currentTemp < stageTemp - 5){
+      analogWrite(heatPin, 200);
       digitalWrite(fanPin, LOW);
+      showtime = false;
+    }
+    else if(currentTemp < stageTemp - 2){
+      analogWrite(heatPin, 100);
+      digitalWrite(fanPin, LOW);
+      showtime = false;
     }
     else {
       Serial.println(F("Reached Steady State"));
       currentStageStartTime = millis(); // Set timer
+      showtime = true;
       currentState = 2; // Continue STEADY STATE stage
     }
   }
@@ -560,11 +587,11 @@ void machineUpdate(uint16_t dt) {
 
   if(currentState == 3) {
     // COOLING
-    
+    showtime = false;
     // Set target temp of the next stage
     stageTemp = tempSettings[1];
     
-    if(currentTemp > (stageTemp+5) && toggleCooling == 1){ // Check whether we need to cool, and take a buffer of 5 degrees
+    if(currentTemp > (stageTemp && toggleCooling == 1)) { // Check whether we need to cool, and take a buffer of 5 degrees
       Serial.println(F("Cooling down"));
       digitalWrite(fanPin, HIGH);
     }
@@ -650,3 +677,150 @@ void updateEncoder(){
 }
 /* *******************************************************
 */
+
+/* *******************************************************
+/  read the DS18S20 sensor 1
+*/
+float getTemp1(){
+  byte i;
+  byte present = 0;
+  byte type_s;
+  byte data[12];
+  byte addr[8];
+  float celsius, fahrenheit;
+  
+  if ( !ds1.search(addr)) {
+    Serial.println("No more addresses.");
+    Serial.println();
+    ds1.reset_search();
+    delay(100);
+  }
+  
+  Serial.print("ROM =");
+  for( i = 0; i < 8; i++) {
+    Serial.write(' ');
+    Serial.print(addr[i], HEX);
+  }
+
+  if (OneWire::crc8(addr, 7) != addr[7]) {
+      Serial.println("CRC is not valid!");
+  }
+  Serial.println();
+ 
+  // the first ROM byte indicates which chip
+  switch (addr[0]) {
+    case 0x10:
+      Serial.println("  Chip = DS18S20");  // or old DS1820
+      type_s = 1;
+      break;
+    case 0x28:
+      Serial.println("  Chip = DS18B20");
+      type_s = 0;
+      break;
+    case 0x22:
+      Serial.println("  Chip = DS1822");
+      type_s = 0;
+      break;
+    default:
+      Serial.println("Device is not a DS18x20 family device.");
+      break;
+  } 
+
+  ds1.reset();
+  ds1.select(addr);
+  ds1.write(0x44,1);         // start conversion, with parasite power on at the end
+  
+  delay(750);     // maybe 750ms is enough, maybe not
+  // we might do a ds.depower() here, but the reset will take care of it.
+  
+  present = ds1.reset();
+  ds1.select(addr);    
+  ds1.write(0xBE);         // Read Scratchpad
+
+  Serial.print("  Data = ");
+  Serial.print(present,HEX);
+  Serial.print(" ");
+  for ( i = 0; i < 9; i++) {           // we need 9 bytes
+    data[i] = ds1.read();
+    Serial.print(data[i], HEX);
+    Serial.print(" ");
+  }
+  Serial.print(" CRC=");
+  Serial.print(OneWire::crc8(data, 8), HEX);
+  Serial.println();
+
+  // convert the data to actual temperature
+
+  unsigned int raw = (data[1] << 8) | data[0];
+  if (type_s) {
+    raw = raw << 3; // 9 bit resolution default
+    if (data[7] == 0x10) {
+      // count remain gives full 12 bit resolution
+      raw = (raw & 0xFFF0) + 12 - data[6];
+    }
+  } else {
+    byte cfg = (data[4] & 0x60);
+    if (cfg == 0x00) raw = raw << 3;  // 9 bit resolution, 93.75 ms
+    else if (cfg == 0x20) raw = raw << 2; // 10 bit res, 187.5 ms
+    else if (cfg == 0x40) raw = raw << 1; // 11 bit res, 375 ms
+    // default is 12 bit resolution, 750 ms conversion time
+  }
+  celsius = (float)raw / 16.0;
+  fahrenheit = celsius * 1.8 + 32.0;
+  Serial.print("  Temperature = ");
+  Serial.print(celsius);
+  Serial.print(" Celsius, ");
+  Serial.print(fahrenheit);
+  Serial.println(" Fahrenheit");
+  return celsius;
+}
+
+/* *******************************************************
+/  read the DS18S20 sensor 2
+*/
+float getTemp2(){
+ //returns the temperature from one DS18S20 in DEG Celsius
+
+ byte data[12];
+ byte addr[8];
+
+ if ( !ds2.search(addr)) {
+   //no more sensors on chain, reset search
+   ds2.reset_search();
+   return -1000;
+ }
+
+ if ( OneWire::crc8( addr, 7) != addr[7]) {
+   Serial.println("CRC is not valid!");
+   return -1000;
+ }
+
+ if ( addr[0] != 0x10 && addr[0] != 0x28) {
+   Serial.print("Device is not recognized");
+   return -1000;
+ }
+
+ ds2.reset();
+ ds2.select(addr);
+ ds2.write(0x44,1); // start conversion, with parasite power on at the end
+
+ byte present = ds2.reset();
+ ds2.select(addr);  
+ ds2.write(0xBE); // Read Scratchpad
+
+ 
+ for (int i = 0; i < 9; i++) { // we need 9 bytes
+  data[i] = ds2.read();
+ }
+ 
+ ds2.reset_search();
+ 
+ byte MSB = data[1];
+ byte LSB = data[0];
+
+ float tempRead = ((MSB << 8) | LSB); //using two's compliment
+ float TemperatureSum = tempRead / 16;
+ 
+ return TemperatureSum;
+ 
+}
