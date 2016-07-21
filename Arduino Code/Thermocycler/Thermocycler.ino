@@ -65,8 +65,9 @@ int cycleSetting = 0;     // Max number of cycles
 // Temperature read
 int val;               // Create an integer variable to temporarily store the thermistor read
 double currentTemp;    // Variable to hold the current temperature value
-int TempPin1 = 9;      // DS18S20 Signal pin on digital 9
-int TempPin2 = 10;     // DS18S20 Signal pin on digital 10
+double currentLidTemp; // Variable to hold the current lid temperature value
+#define TempPin1 9     // DS18S20 Signal pin on digital 9
+#define TempPin2 10    // DS18S20 Signal pin on digital 10
 
 OneWire ds1(TempPin1);
 OneWire ds2(TempPin2);
@@ -79,20 +80,9 @@ int currentState = 0;   // 3 states: Denat, Anneal and Elon
 unsigned long currentStageStartTime = 0; // Beginning of the current Stage
 int currentStage = 0;   // In each stage, go through 3 states: Ramping, Steady, Cooling
 int toggleCooling = 0;  // Toggle to skip or execute Stage 3: Cooling
-boolean showtime = false;
+boolean showtime = false; // Display time on display
+int lidTemp = 99;       // Target lid temp
 
-/* *******************************************************
-*/
-
-/* *******************************************************
-/  Machine User Interface
-*/
-boolean buttonState = 0;    // Start button
-int ledstate = false;       // Blinking indicator LED
-
-// Pins
-const int buttonPin = 11;   // the number of the pushbutton pin
-const int ledPin =  13;     // the number of Arduino's onboard LED pin
 /* *******************************************************
 */
 
@@ -111,6 +101,35 @@ const int ledPin =  13;     // the number of Arduino's onboard LED pin
 #define STATE_STOP 9
 
 byte state = STATE_DENAT_TIMEPROG;
+/* *******************************************************
+*/
+
+/* *******************************************************
+/  Machine User Interface
+*/
+boolean buttonState = 0;    // Start button
+int ledstate = false;       // Blinking indicator LED
+
+// Pins
+#define buttonPin 11   // the number of the pushbutton pin
+#define ledPin 13      // the number of Arduino's onboard LED pin
+/* *******************************************************
+*/
+
+/* *******************************************************
+/  Rotary Encoder
+*/
+// These pins can not be changed, because Pin 2 and 3 are special interrupt pins
+#define encoderPin1 2
+#define encoderPin2 3
+
+volatile int lastEncoded = 0;
+volatile long encoderValue = 0;
+
+long lastencoderValue = 0;
+
+int lastMSB = 0;
+int lastLSB = 0;
 /* *******************************************************
 */
 
@@ -134,24 +153,7 @@ int LCDTime = 0;        // Time tracker for LCD update
 */
 
 /* *******************************************************
-/  Rotary Encoder
-*/
-// These pins can not be changed, because Pin 2 and 3 are special interrupt pins
-int encoderPin1 = 2;
-int encoderPin2 = 3;
-
-volatile int lastEncoded = 0;
-volatile long encoderValue = 0;
-
-long lastencoderValue = 0;
-
-int lastMSB = 0;
-int lastLSB = 0;
-/* *******************************************************
-*/
-
-/* *******************************************************
-/  Setup fucntion, this code is only executed once
+/  Setup function, this code is only executed once
 */
 void setup() {
   // Update clock
@@ -203,6 +205,7 @@ void setup() {
 
 /* *******************************************************
 /  Thermistor function converts the raw signal into a temperature
+/  NOTE: no longer used
 */
 double Thermister(int RawADC) {  //Function to perform the fancy math of the Steinhart-Hart equation
   double Temp;
@@ -224,12 +227,14 @@ void loop() {
   uint16_t dt = time-lastTick;  // difference between current and previous time
   lastTick = time;
 
-  // Read temperature
+  // Read temperature by Thermistor
   //val=analogRead(0);            //Read the analog port 0 and store the value in val
   //currentTemp=Thermister(val);  //Runs the fancy math function on the raw analog value
   
+  // Read temperature by digital temp sensor if PCR is running
   if(state == STATE_CYCLING) {
     currentTemp = getTemp1();
+    currentLidTemp = getTemp2();
   }
   
   // Print temperature to computer via Serial
@@ -428,7 +433,7 @@ void machineUpdate(uint16_t dt) {
       lcd.clear(); // reset LCD screen
       encoderValue = 0; // reset encoderValue
       currentState = 1; // start at first state ramp up, steady, cool
-      currentStage = 1; // start at first stage denat, anneal, elon
+      currentStage = 0; // start at first stage denat, anneal, elon
       cycleCounter = 1; // start at first cycle
     }     
   } 
@@ -527,7 +532,7 @@ void machineUpdate(uint16_t dt) {
     currentStage = 0;    // Go through 3 stages: Denat, Anneal and Elon
     currentStageStartTime = 0; // Beginning of the current Stage
     currentState = 0;    // In each stage, go through 3 states: Ramping, Steady, Cooling
-    toggleCooling = 0;   // Toggle to skip or execute Stage 3: Cooling
+    toggleCooling = 0;   // Toggle to skip or execute State 3: Cooling
 
     // Stop heating and fan
     digitalWrite(fanPin, LOW);
@@ -591,7 +596,7 @@ void machineUpdate(uint16_t dt) {
     // Set target temp of the next stage
     stageTemp = tempSettings[1];
     
-    if(currentTemp > (stageTemp && toggleCooling == 1)) { // Check whether we need to cool, and take a buffer of 5 degrees
+    if(currentTemp > stageTemp && toggleCooling == 1) { // Check whether we need to cool
       Serial.println(F("Cooling down"));
       digitalWrite(fanPin, HIGH);
     }
@@ -603,6 +608,23 @@ void machineUpdate(uint16_t dt) {
       currentStage ++; // Go from Denat, to Anneal to Elon
     }
   }
+
+  if(currentState > 0) {
+    // LID HEATER
+    if(currentLidTemp < lidTemp - 10) {
+      digitalWrite(lidPin, HIGH); 
+    } 
+    else if(currentLidTemp < lidTemp - 5){
+      analogWrite(lidPin, 200);
+    }
+    else if(currentLidTemp < lidTemp - 2){
+      analogWrite(lidPin, 100);
+    }
+    else {
+      digitalWrite(lidPin, LOW);
+    }
+  }
+
 
 /* *******************************************************
 */
