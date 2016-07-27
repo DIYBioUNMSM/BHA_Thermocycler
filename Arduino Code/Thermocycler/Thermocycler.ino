@@ -119,9 +119,9 @@ int ledstate = false;       // Blinking indicator LED
 /* *******************************************************
 /  Rotary Encoder
 */
-// These pins can not be changed, because Pin 2 and 3 are special interrupt pins
-#define encoderPin1 2
-#define encoderPin2 3
+// These pins can not be changed, because Pin 2 and 3 are special interrupt pins on Arduino UNO. On Leonardo, use 0 and 1
+#define encoderPin1 0
+#define encoderPin2 1
 
 volatile int lastEncoded = 0;
 volatile long encoderValue = 0;
@@ -233,8 +233,14 @@ void loop() {
   
   // Read temperature by digital temp sensor if PCR is running
   if(state == STATE_CYCLING) {
-    currentTemp = getTemp1();
-    currentLidTemp = getTemp2();
+    double tTemp = getTemp1();
+    if(tTemp > 1) {
+      currentTemp = tTemp;
+    }
+    tTemp = getTemp2();
+    if(tTemp > 1) {
+      currentLidTemp = tTemp;
+    }
   }
   
   // Print temperature to computer via Serial
@@ -706,7 +712,7 @@ void updateEncoder(){
 float getTemp1(){
   byte i;
   byte present = 0;
-  byte type_s;
+  byte type_s = 2;
   byte data[12];
   byte addr[8];
   float celsius, fahrenheit;
@@ -715,7 +721,8 @@ float getTemp1(){
     Serial.println("No more addresses.");
     Serial.println();
     ds1.reset_search();
-    delay(100);
+    delay(250);
+    //return;
   }
   
   Serial.print("ROM =");
@@ -726,41 +733,44 @@ float getTemp1(){
 
   if (OneWire::crc8(addr, 7) != addr[7]) {
       Serial.println("CRC is not valid!");
+      //return;
   }
   Serial.println();
  
   // the first ROM byte indicates which chip
   switch (addr[0]) {
     case 0x10:
-      Serial.println("  Chip = DS18S20");  // or old DS1820
+      Serial.println("  Chip = ds118S20");  // or old ds11820
       type_s = 1;
       break;
     case 0x28:
-      Serial.println("  Chip = DS18B20");
+      Serial.println("  Chip = ds118B20");
       type_s = 0;
       break;
     case 0x22:
-      Serial.println("  Chip = DS1822");
+      Serial.println("  Chip = ds11822");
       type_s = 0;
       break;
     default:
-      Serial.println("Device is not a DS18x20 family device.");
-      break;
+      Serial.println("Device is not a ds11 8x20 family device. DS1");
+      //return;
   } 
+
+  if(type_s != 2) {
 
   ds1.reset();
   ds1.select(addr);
-  ds1.write(0x44,1);         // start conversion, with parasite power on at the end
+  ds1.write(0x44, 1);        // start conversion, with parasite power on at the end
   
-  delay(750);     // maybe 750ms is enough, maybe not
-  // we might do a ds.depower() here, but the reset will take care of it.
+  delay(1000);     // maybe 750ms is enough, maybe not
+  // we might do a ds1.depower() here, but the reset will take care of it.
   
   present = ds1.reset();
   ds1.select(addr);    
   ds1.write(0xBE);         // Read Scratchpad
 
   Serial.print("  Data = ");
-  Serial.print(present,HEX);
+  Serial.print(present, HEX);
   Serial.print(" ");
   for ( i = 0; i < 9; i++) {           // we need 9 bytes
     data[i] = ds1.read();
@@ -771,21 +781,24 @@ float getTemp1(){
   Serial.print(OneWire::crc8(data, 8), HEX);
   Serial.println();
 
-  // convert the data to actual temperature
-
-  unsigned int raw = (data[1] << 8) | data[0];
+  // Convert the data to actual temperature
+  // because the result is a 16 bit signed integer, it should
+  // be stored to an "int16_t" type, which is always 16 bits
+  // even when compiled on a 32 bit processor.
+  int16_t raw = (data[1] << 8) | data[0];
   if (type_s) {
     raw = raw << 3; // 9 bit resolution default
     if (data[7] == 0x10) {
-      // count remain gives full 12 bit resolution
+      // "count remain" gives full 12 bit resolution
       raw = (raw & 0xFFF0) + 12 - data[6];
     }
   } else {
     byte cfg = (data[4] & 0x60);
-    if (cfg == 0x00) raw = raw << 3;  // 9 bit resolution, 93.75 ms
-    else if (cfg == 0x20) raw = raw << 2; // 10 bit res, 187.5 ms
-    else if (cfg == 0x40) raw = raw << 1; // 11 bit res, 375 ms
-    // default is 12 bit resolution, 750 ms conversion time
+    // at lower res, the low bits are undefined, so let's zero them
+    if (cfg == 0x00) raw = raw & ~7;  // 9 bit resolution, 93.75 ms
+    else if (cfg == 0x20) raw = raw & ~3; // 10 bit res, 187.5 ms
+    else if (cfg == 0x40) raw = raw & ~1; // 11 bit res, 375 ms
+    //// default is 12 bit resolution, 750 ms conversion time
   }
   celsius = (float)raw / 16.0;
   fahrenheit = celsius * 1.8 + 32.0;
@@ -795,54 +808,109 @@ float getTemp1(){
   Serial.print(fahrenheit);
   Serial.println(" Fahrenheit");
   return celsius;
+  }
 }
 
 /* *******************************************************
 /  read the DS18S20 sensor 2
 */
 float getTemp2(){
- //returns the temperature from one DS18S20 in DEG Celsius
+  byte i;
+  byte present = 0;
+  byte type_s = 2;
+  byte data[12];
+  byte addr[8];
+  float celsius, fahrenheit;
+  
+  if ( !ds2.search(addr)) {
+    Serial.println("No more addresses.");
+    Serial.println();
+    ds2.reset_search();
+    delay(250);
+    //return;
+  }
+  
+  Serial.print("ROM =");
+  for( i = 0; i < 8; i++) {
+    Serial.write(' ');
+    Serial.print(addr[i], HEX);
+  }
 
- byte data[12];
- byte addr[8];
-
- if ( !ds2.search(addr)) {
-   //no more sensors on chain, reset search
-   ds2.reset_search();
-   return -1000;
- }
-
- if ( OneWire::crc8( addr, 7) != addr[7]) {
-   Serial.println("CRC is not valid!");
-   return -1000;
- }
-
- if ( addr[0] != 0x10 && addr[0] != 0x28) {
-   Serial.print("Device is not recognized");
-   return -1000;
- }
-
- ds2.reset();
- ds2.select(addr);
- ds2.write(0x44,1); // start conversion, with parasite power on at the end
-
- byte present = ds2.reset();
- ds2.select(addr);  
- ds2.write(0xBE); // Read Scratchpad
-
+  if (OneWire::crc8(addr, 7) != addr[7]) {
+      Serial.println("CRC is not valid!");
+      //return;
+  }
+  Serial.println();
  
- for (int i = 0; i < 9; i++) { // we need 9 bytes
-  data[i] = ds2.read();
- }
- 
- ds2.reset_search();
- 
- byte MSB = data[1];
- byte LSB = data[0];
+  // the first ROM byte indicates which chip
+  switch (addr[0]) {
+    case 0x10:
+      Serial.println("  Chip = ds218S20");  // or old ds21820
+      type_s = 1;
+      break;
+    case 0x28:
+      Serial.println("  Chip = ds218B20");
+      type_s = 0;
+      break;
+    case 0x22:
+      Serial.println("  Chip = ds21822");
+      type_s = 0;
+      break;
+    default:
+      Serial.println("Device is not a ds218x20 family device.");
+      //return;
+  } 
 
- float tempRead = ((MSB << 8) | LSB); //using two's compliment
- float TemperatureSum = tempRead / 16;
- 
- return TemperatureSum;
- 
+  if(type_s != 2) {
+  ds2.reset();
+  ds2.select(addr);
+  ds2.write(0x44, 1);        // start conversion, with parasite power on at the end
+  
+  delay(1000);     // maybe 750ms is enough, maybe not
+  // we might do a ds2.depower() here, but the reset will take care of it.
+  
+  present = ds2.reset();
+  ds2.select(addr);    
+  ds2.write(0xBE);         // Read Scratchpad
+
+  Serial.print("  Data = ");
+  Serial.print(present, HEX);
+  Serial.print(" ");
+  for ( i = 0; i < 9; i++) {           // we need 9 bytes
+    data[i] = ds2.read();
+    Serial.print(data[i], HEX);
+    Serial.print(" ");
+  }
+  Serial.print(" CRC=");
+  Serial.print(OneWire::crc8(data, 8), HEX);
+  Serial.println();
+
+  // Convert the data to actual temperature
+  // because the result is a 16 bit signed integer, it should
+  // be stored to an "int16_t" type, which is always 16 bits
+  // even when compiled on a 32 bit processor.
+  int16_t raw = (data[1] << 8) | data[0];
+  if (type_s) {
+    raw = raw << 3; // 9 bit resolution default
+    if (data[7] == 0x10) {
+      // "count remain" gives full 12 bit resolution
+      raw = (raw & 0xFFF0) + 12 - data[6];
+    }
+  } else {
+    byte cfg = (data[4] & 0x60);
+    // at lower res, the low bits are undefined, so let's zero them
+    if (cfg == 0x00) raw = raw & ~7;  // 9 bit resolution, 93.75 ms
+    else if (cfg == 0x20) raw = raw & ~3; // 10 bit res, 187.5 ms
+    else if (cfg == 0x40) raw = raw & ~1; // 11 bit res, 375 ms
+    //// default is 12 bit resolution, 750 ms conversion time
+  }
+  celsius = (float)raw / 16.0;
+  fahrenheit = celsius * 1.8 + 32.0;
+  Serial.print("  Temperature = ");
+  Serial.print(celsius);
+  Serial.print(" Celsius, ");
+  Serial.print(fahrenheit);
+  Serial.println(" Fahrenheit");
+  return celsius;
+  }
 }
