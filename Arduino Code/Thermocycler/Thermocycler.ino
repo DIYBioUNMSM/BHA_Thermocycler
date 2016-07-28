@@ -29,7 +29,8 @@
  3 stage (Denaturing, Annealing, Elongation) PCR cycles.
 */
 
-boolean toggleLidHeater = false;
+boolean toggleLidHeater = false; // False = lid heater off
+int lidTemp = 85;       // Target lid temp
 
 /* *******************************************************
 /  Libraries
@@ -89,7 +90,6 @@ unsigned long currentStageStartTime = 0; // Beginning of the current Stage
 int currentStage = 0;   // In each stage, go through 3 states: Ramping, Steady, Cooling
 int toggleCooling = 0;  // Toggle to skip or execute Stage 3: Cooling
 boolean showtime = false; // Display time on display
-int lidTemp = 99;       // Target lid temp
 
 /* *******************************************************
 */
