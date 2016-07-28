@@ -245,6 +245,8 @@ void loop() {
   
   // Read temperature by digital temp sensor if PCR is running
   if(state == STATE_CYCLING) {
+    sensors1.requestTemperatures();
+    sensors2.requestTemperatures();
     double tTemp = sensors1.getTempCByIndex(0);
     if(tTemp > 1) {
       currentTemp = tTemp;
@@ -258,6 +260,8 @@ void loop() {
   // Print temperature to computer via Serial
   Serial.print("Temperature: ");
   Serial.println(currentTemp);
+  Serial.print("Lid Temperature: ");
+  Serial.println(currentLidTemp);
 
   // Check whether the button is pressed
   buttonState = digitalRead(buttonPin);
