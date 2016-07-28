@@ -29,6 +29,8 @@
  3 stage (Denaturing, Annealing, Elongation) PCR cycles.
 */
 
+boolean toggleLidHeater = false;
+
 /* *******************************************************
 /  Libraries
 */
@@ -557,6 +559,7 @@ void machineUpdate(uint16_t dt) {
     // Stop heating and fan
     digitalWrite(fanPin, LOW);
     digitalWrite(heatPin, LOW);
+    digitalWrite(lidPin, LOW);
     
     // Go back to the first state
     stateChange(STATE_DENAT_TIMEPROG);
@@ -629,7 +632,7 @@ void machineUpdate(uint16_t dt) {
     }
   }
 
-  if(currentState > 0) {
+  if(currentState > 0 && toggleLidHeater) {
     // LID HEATER
     if(currentLidTemp < lidTemp - 10) {
       digitalWrite(lidPin, HIGH); 
