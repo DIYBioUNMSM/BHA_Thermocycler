@@ -317,6 +317,7 @@ void machineUpdate(uint16_t dt) {
     lcd.print(F("Denat Temp"));
     lcd.setCursor(11,1);
     lcd.print(encoderValue);
+    lcd.print("  ");
 
     // Continue to next state if the button is pressed
     if(buttonState > 0) {
@@ -363,6 +364,7 @@ void machineUpdate(uint16_t dt) {
     lcd.print(F("Anneal Temp"));
     lcd.setCursor(11,1);
     lcd.print(encoderValue);
+    lcd.print("  ");
 
     // Continue to next state if the button is pressed
     if(buttonState > 0) {
@@ -409,6 +411,7 @@ void machineUpdate(uint16_t dt) {
     lcd.print(F("Elon Temp"));
     lcd.setCursor(11,1);
     lcd.print(encoderValue);
+    lcd.print("  ");
 
     // Continue to next state if the button is pressed
     if(buttonState > 0) {
@@ -432,6 +435,7 @@ void machineUpdate(uint16_t dt) {
     lcd.print(F("Cycles"));
     lcd.setCursor(8,1);
     lcd.print(encoderValue);
+    lcd.print("  ");
 
     // Continue to next state if the button is pressed
     if(buttonState > 0) {
