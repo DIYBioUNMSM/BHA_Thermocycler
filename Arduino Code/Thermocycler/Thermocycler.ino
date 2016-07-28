@@ -52,8 +52,8 @@ LiquidCrystal_I2C lcd(0x27,16,2);
 /  Thermocycler Settings
 */
 String stageNames[3] = { "Denat", "Anneal", "Elon" }; // Names of Stages
-int tempSettings[3] = { 0, 0, 0}; // Temperatures of each stage
-int timeSettings[3] = { 0, 0, 0}; // Duration of each stage
+int tempSettings[3] = { 95, 55, 75}; // Temperatures of each stage
+int timeSettings[3] = { 5, 5, 5}; // Duration of each stage
 int coolSettings[3] = { 1, 0, 0}; // Toggle to enable fan / cooling after stage (only after Denat stage)
 int cycleSetting = 0;     // Max number of cycles
 
