@@ -118,7 +118,7 @@ byte state = STATE_DENAT_TIMEPROG;
 boolean buttonState = 0;    // Start button
 boolean lastButtonState = false; // Debounce variable
 long lastDebounceTime = 0;  // the last time the output pin was toggled
-long debounceDelay = 50;    // the debounce time; increase if the output flickers
+long debounceDelay = 500;    // the debounce time; increase if the output flickers
 int ledstate = false;       // Blinking indicator LED
 
 // Pins
@@ -268,16 +268,16 @@ void loop() {
 
   // Check whether the button is pressed using debounce timer
   int reading = digitalRead(buttonPin);
-  if (reading != lastButtonState) {
-    // reset the debouncing timer
-    lastDebounceTime = millis();
-  }
+
   if ((millis() - lastDebounceTime) > debounceDelay) {
-    if (reading != buttonState) {
-      buttonState = reading;
+    if (reading == 1) {
+      buttonState = 1;
+      lastDebounceTime = millis();
     }
   }
-  lastButtonState = reading;
+  else {
+    buttonState = 0;
+  }
   
   // Blink the LED, indicating that the Arduino is working
   if (ledstate == false) {
