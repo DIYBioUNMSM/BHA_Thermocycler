@@ -131,8 +131,8 @@ int ledstate = false;       // Blinking indicator LED
 /  Rotary Encoder
 */
 // These pins can not be changed, because Pin 2 and 3 are special interrupt pins on Arduino UNO. On Leonardo, use 0 and 1
-#define encoderPin1 0
-#define encoderPin2 1
+#define encoderPin1 2
+#define encoderPin2 3
 
 volatile int lastEncoded = 0;
 volatile long encoderValue = 0;
@@ -590,18 +590,13 @@ void machineUpdate(uint16_t dt) {
     
   if(currentState == 1) {
     // RAMPING UP
-    if(currentTemp < stageTemp - 10) {
+    if(currentTemp < stageTemp - 5) {
       digitalWrite(heatPin, HIGH);
       digitalWrite(fanPin, LOW);   
       showtime = false;   
     } 
-    else if(currentTemp < stageTemp - 5){
-      analogWrite(heatPin, 200);
-      digitalWrite(fanPin, LOW);
-      showtime = false;
-    }
     else if(currentTemp < stageTemp - 2){
-      analogWrite(heatPin, 100);
+      analogWrite(heatPin, 200);
       digitalWrite(fanPin, LOW);
       showtime = false;
     }
@@ -651,14 +646,11 @@ void machineUpdate(uint16_t dt) {
 
   if(currentState > 0 && toggleLidHeater) {
     // LID HEATER
-    if(currentLidTemp < lidTemp - 10) {
+    if(currentLidTemp < lidTemp - 5) {
       digitalWrite(lidPin, HIGH); 
     } 
-    else if(currentLidTemp < lidTemp - 5){
-      analogWrite(lidPin, 200);
-    }
     else if(currentLidTemp < lidTemp - 2){
-      analogWrite(lidPin, 100);
+      analogWrite(lidPin, 200);
     }
     else {
       digitalWrite(lidPin, LOW);
