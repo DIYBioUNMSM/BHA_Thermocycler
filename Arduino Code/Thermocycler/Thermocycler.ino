@@ -29,7 +29,7 @@
  3 stage (Denaturing, Annealing, Elongation) PCR cycles.
 */
 
-boolean toggleLidHeater = false; // False = lid heater off
+boolean toggleLidHeater = true; // False = lid heater off, True = lid heater on
 int lidTemp = 85;       // Target lid temp
 
 /* *******************************************************
@@ -78,8 +78,8 @@ OneWire oneWire1(TempPin1);
 OneWire oneWire2(TempPin2);
 
 // Pass our oneWire reference to Dallas Temperature. 
-DallasTemperature sensors1(&oneWire1);
-DallasTemperature sensors2(&oneWire2);
+DallasTemperature tempSensor1(&oneWire1);
+DallasTemperature tempSensor2(&oneWire2);
 
 // PCR cycling variables
 int stageTemp = 0;      // Target temperature of the current stage
@@ -116,6 +116,9 @@ byte state = STATE_DENAT_TIMEPROG;
 /  Machine User Interface
 */
 boolean buttonState = 0;    // Start button
+boolean lastButtonState = false; // Debounce variable
+long lastDebounceTime = 0;  // the last time the output pin was toggled
+long debounceDelay = 50;    // the debounce time; increase if the output flickers
 int ledstate = false;       // Blinking indicator LED
 
 // Pins
@@ -198,8 +201,8 @@ void setup() {
   digitalWrite(lidPin, LOW);
 
   // Start up the temperature sensor library
-  sensors1.begin();
-  sensors2.begin();
+  tempSensor1.begin();
+  tempSensor2.begin();
   
   // Initialize the LCD and print a message
   lcd.init();
@@ -245,13 +248,13 @@ void loop() {
   
   // Read temperature by digital temp sensor if PCR is running
   if(state == STATE_CYCLING) {
-    sensors1.requestTemperatures();
-    sensors2.requestTemperatures();
-    double tTemp = sensors1.getTempCByIndex(0);
+    tempSensor1.requestTemperatures();
+    tempSensor2.requestTemperatures();
+    double tTemp = tempSensor1.getTempCByIndex(0);
     if(tTemp > 1) {
       currentTemp = tTemp;
     }
-    tTemp = sensors2.getTempCByIndex(0);
+    tTemp = tempSensor2.getTempCByIndex(0);
     if(tTemp > 1) {
       currentLidTemp = tTemp;
     }
@@ -263,8 +266,18 @@ void loop() {
   Serial.print("Lid Temperature: ");
   Serial.println(currentLidTemp);
 
-  // Check whether the button is pressed
-  buttonState = digitalRead(buttonPin);
+  // Check whether the button is pressed using debounce timer
+  int reading = digitalRead(buttonPin);
+  if (reading != lastButtonState) {
+    // reset the debouncing timer
+    lastDebounceTime = millis();
+  }
+  if ((millis() - lastDebounceTime) > debounceDelay) {
+    if (reading != buttonState) {
+      buttonState = reading;
+    }
+  }
+  lastButtonState = reading;
   
   // Blink the LED, indicating that the Arduino is working
   if (ledstate == false) {
@@ -282,8 +295,8 @@ void loop() {
   // Reset button state
   buttonState = 0;
 
-  // Wait 200 microsconds before restarting the loop
-  delay(200);
+  // Wait 10 microsconds before restarting the loop
+  delay(10);
 }
 /* *******************************************************
 */
