@@ -131,8 +131,8 @@ int ledstate = false;       // Blinking indicator LED
 /  Rotary Encoder
 */
 // These pins can not be changed, because Pin 2 and 3 are special interrupt pins on Arduino UNO. On Leonardo, use 0 and 1
-#define encoderPin1 2
-#define encoderPin2 3
+#define encoderPin1 0
+#define encoderPin2 1
 
 volatile int lastEncoded = 0;
 volatile long encoderValue = 0;
