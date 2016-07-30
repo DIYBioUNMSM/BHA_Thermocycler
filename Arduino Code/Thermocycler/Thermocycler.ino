@@ -32,6 +32,9 @@
 boolean toggleLidHeater = true; // False = lid heater off, True = lid heater on
 int lidTemp = 85;       // Target lid temp
 
+int arduinoType = 1; // Choose: 0 = Arduino UNO; 1 = Arduino Leonardo
+int tempSensorType = 1; // Choose: 0 = 10K NTC thermistor; 1 = DS18B20 digital temperature sensor
+
 /* *******************************************************
 /  Libraries
 */
@@ -130,9 +133,6 @@ int ledstate = false;       // Blinking indicator LED
 /* *******************************************************
 /  Rotary Encoder
 */
-// These pins can not be changed, because Pin 2 and 3 are special interrupt pins on Arduino UNO. On Leonardo, use 0 and 1
-#define encoderPin1 0
-#define encoderPin2 1
 
 volatile int lastEncoded = 0;
 volatile long encoderValue = 0;
@@ -167,6 +167,16 @@ int LCDTime = 0;        // Time tracker for LCD update
 /  Setup function, this code is only executed once
 */
 void setup() {
+  // Encoder pins
+  if(arduinoType == 0) {
+    #define encoderPin1 2
+    #define encoderPin2 3
+  }
+  else if(arduinoType == 1) {
+    #define encoderPin1 0
+    #define encoderPin2 1
+  }
+  
   // Update clock
   lastTick = millis();
 
@@ -241,22 +251,27 @@ void loop() {
   uint32_t time = millis();     // current time since start of sketch
   uint16_t dt = time-lastTick;  // difference between current and previous time
   lastTick = time;
-
-  // Read temperature by Thermistor
-  //val=analogRead(0);            //Read the analog port 0 and store the value in val
-  //currentTemp=Thermister(val);  //Runs the fancy math function on the raw analog value
   
   // Read temperature by digital temp sensor if PCR is running
   if(state == STATE_CYCLING) {
-    tempSensor1.requestTemperatures();
-    tempSensor2.requestTemperatures();
-    double tTemp = tempSensor1.getTempCByIndex(0);
-    if(tTemp > 1) {
-      currentTemp = tTemp;
+    if(tempSensorType == 1) { // DS18B20 digital temperature sensor
+      tempSensor1.requestTemperatures();
+      tempSensor2.requestTemperatures();
+      double tTemp = tempSensor1.getTempCByIndex(0);
+      if(tTemp > 1) {
+        currentTemp = tTemp;
+      }
+      tTemp = tempSensor2.getTempCByIndex(0);
+      if(tTemp > 1) {
+        currentLidTemp = tTemp;
+      }
     }
-    tTemp = tempSensor2.getTempCByIndex(0);
-    if(tTemp > 1) {
-      currentLidTemp = tTemp;
+    else if(tempSensorType == 0) {
+       // Read temperature by Thermistor
+       val=analogRead(0);            //Read the Analog port 0 and store the value in val
+       currentTemp=Thermister(val);  //Runs the fancy math function on the raw analog value
+       val=analogRead(1);            //Read the Analog port 1 and store the value in val
+       currentLidTemp=Thermister(val);  //Runs the fancy math function on the raw analog value
     }
   }
   

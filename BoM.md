@@ -23,6 +23,7 @@ Make sure you have an Arduino or equivalent microprocessor. The Fritzing file as
 |15|1|Diode|[iPrototype](https://iprototype.nl/products/components/overige/diode), [Farnell](http://nl.farnell.com/webapp/wcs/stores/servlet/ProductDisplay?catalogId=15001&langId=31&urlRequestType=Base&partNumber=1324152&storeId=10168)|0.06|
 |16|2|4.7K resistor|[Farnell](http://nl.farnell.com/webapp/wcs/stores/servlet/ProductDisplay?catalogId=15001&langId=31&urlRequestType=Base&partNumber=2329534&storeId=10168), [iPrototype](https://www.iprototype.nl/products/components/resistors/4K7) |0.03|
 |17|1|Breadboard|[Farnell](http://nl.farnell.com/webapp/wcs/stores/servlet/ProductDisplay?catalogId=15001&langId=31&urlRequestType=Base&partNumber=2503765&storeId=10168)|2.56|
+|18|1|Custom milled PCR tube block|||
 
 * You will also need some M3 10 mm bolts and nuts
 
