@@ -484,17 +484,6 @@ void machineUpdate(uint16_t dt) {
     // Continue to next state if the button is pressed
     if(buttonState > 0) {
       
-      /* FONS HACK */
-      
-      tempSensor1.requestTemperatures();
-      tempSensor2.requestTemperatures();
-      double tTemp = tempSensor1.getTempCByIndex(0);
-      currentTemp = tTemp;
-      tTemp = tempSensor2.getTempCByIndex(0);
-      currentLidTemp = tTemp;
-      
-      /* */
-      
       stateChange(STATE_CYCLING);
       lcd.clear(); // reset LCD screen
       encoderValue = 0; // reset encoderValue
