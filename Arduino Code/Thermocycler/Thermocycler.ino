@@ -29,11 +29,68 @@
  3 stage (Denaturing, Annealing, Elongation) PCR cycles.
 */
 
-boolean toggleLidHeater = true; // False = lid heater off, True = lid heater on
+boolean toggleLidHeater = false; // False = lid heater off, True = lid heater on
 int lidTemp = 85;       // Target lid temp
 
-int arduinoType = 1; // Choose: 0 = Arduino UNO; 1 = Arduino Leonardo
-int tempSensorType = 1; // Choose: 0 = 10K NTC thermistor; 1 = DS18B20 digital temperature sensor
+int arduinoType = 0; // Choose: 0 = Arduino UNO; 1 = Arduino Leonardo
+int tempSensorType = 0; // Choose: 0 = 10K NTC thermistor; 1 = DS18B20 digital temperature sensor
+
+class RotaryEncoder
+{
+  byte state;
+  byte pin0, pin1;
+  int value;
+
+  byte readState()
+  {
+    return (digitalRead(pin0) == HIGH ? 1u : 0u)
+         | (digitalRead(pin1) == HIGH ? 2u : 0u);
+  }
+public:
+  RotaryEncoder(int p0, int p1) :
+    pin0(p0), pin1(p1), value(0), state(0) {}
+  
+  void init()
+  {
+    pinMode(pin0, INPUT);
+    pinMode(pin1, INPUT);
+    digitalWrite(pin0, 1);  // enable internal pullup
+    digitalWrite(pin1, 1);  // enable internal pullup
+    value = 0;
+    state = readState();
+  }
+
+  bool poll()
+  {
+    // State transition table
+    static char tbl[16] =
+    { 0, +1, -1, 0,
+      // position 3 = 00 to 11, can't really do anythin, so 0
+      -1, 0, -2, +1,
+      // position 2 = 01 to 10, assume a bounce, should be 01 -> 00 -> 10
+      +1, +2, 0, -1,
+      // position 1 = 10 to 01, assume a bounce, should be 10 -> 00 -> 01
+      0, -1, +1, 0
+      // position 0 = 11 to 10, can't really do anything
+    };
+  
+    byte t = readState();
+    char movement = tbl[(state << 2) | t];
+    if (movement != 0)
+    {
+      value += movement;
+      state = t;
+      return true;
+    }
+    return false;
+  }
+  
+  int getValue()
+  {
+    return value;
+  }
+};
+
 
 /* *******************************************************
 /  Libraries
@@ -163,19 +220,19 @@ int LCDTime = 0;        // Time tracker for LCD update
 /* *******************************************************
 */
 
+#if arduinoType == 0 
+    RotaryEncoder rotaryEncoderA (2,3);
+#endif
+#if arduinoType == 1
+    RotaryEncoder rotaryEncoderA (0,1);
+#endif
+
 /* *******************************************************
 /  Setup function, this code is only executed once
 */
 void setup() {
   // Encoder pins
-  if(arduinoType == 0) {
-    #define encoderPin1 2
-    #define encoderPin2 3
-  }
-  else if(arduinoType == 1) {
-    #define encoderPin1 0
-    #define encoderPin2 1
-  }
+  rotaryEncoderA.init();
   
   // Update clock
   lastTick = millis();
@@ -193,6 +250,7 @@ void setup() {
   pinMode(buttonPin, INPUT);
   
   // rotary encoder as an input
+  /*
   pinMode(encoderPin1, INPUT); 
   pinMode(encoderPin2, INPUT);
   digitalWrite(encoderPin1, HIGH); //turn pullup resistor on
@@ -200,7 +258,7 @@ void setup() {
   //call updateEncoder() when any high/low changed seen
   //on interrupt 0 (pin 2), or interrupt 1 (pin 3) 
   attachInterrupt(0, updateEncoder, CHANGE); 
-  attachInterrupt(1, updateEncoder, CHANGE);  
+  attachInterrupt(1, updateEncoder, CHANGE);  */
 
   // fan and heating and set low
   pinMode(fanPin, OUTPUT);
@@ -252,6 +310,13 @@ void loop() {
   uint16_t dt = time-lastTick;  // difference between current and previous time
   lastTick = time;
   
+  // Poll rotary encoder
+  if (rotaryEncoderA.poll()) {
+    Serial.print("Encoder A: ");
+    Serial.println(rotaryEncoderA.getValue());
+    encoderValue = rotaryEncoderA.getValue();
+  }
+  
   // Read temperature by digital temp sensor if PCR is running
   if(state == STATE_CYCLING) {
     if(tempSensorType == 1) { // DS18B20 digital temperature sensor
@@ -266,20 +331,20 @@ void loop() {
         currentLidTemp = tTemp;
       }
     }
-    else if(tempSensorType == 0) {
+  }
+  else if(tempSensorType == 0) {
        // Read temperature by Thermistor
        val=analogRead(0);            //Read the Analog port 0 and store the value in val
        currentTemp=Thermister(val);  //Runs the fancy math function on the raw analog value
        val=analogRead(1);            //Read the Analog port 1 and store the value in val
        currentLidTemp=Thermister(val);  //Runs the fancy math function on the raw analog value
-    }
   }
   
   // Print temperature to computer via Serial
-  Serial.print("Temperature: ");
-  Serial.println(currentTemp);
-  Serial.print("Lid Temperature: ");
-  Serial.println(currentLidTemp);
+  //Serial.print("Temperature: ");
+  //Serial.println(currentTemp);
+  //Serial.print("Lid Temperature: ");
+  //Serial.println(currentLidTemp);
 
   // Check whether the button is pressed using debounce timer
   int reading = digitalRead(buttonPin);
@@ -735,15 +800,17 @@ String printDigits(int digits){
 /* *******************************************************
 /  updateEncoder is the function that reacts to the rotary encoder interrupts
 */
+/*
 void updateEncoder(){
+  Serial.println("test");
   int MSB = digitalRead(encoderPin1); //MSB = most significant bit
   int LSB = digitalRead(encoderPin2); //LSB = least significant bit
 
   int encoded = (MSB << 1) |LSB; //converting the 2 pin value to single number
   int sum  = (lastEncoded << 2) | encoded; //adding it to the previous encoded value
 
-  if(sum == 0b1101 || sum == 0b0100 || sum == 0b0010 || sum == 0b1011) encoderValue --;
-  if(sum == 0b1110 || sum == 0b0111 || sum == 0b0001 || sum == 0b1000) encoderValue ++;
+  if(sum == 0b1101 || sum == 0b0100 || sum == 0b0010 || sum == 0b1011) { encoderValue --; Serial.println("min"); }
+  if(sum == 0b1110 || sum == 0b0111 || sum == 0b0001 || sum == 0b1000) { encoderValue ++; Serial.println("plus"); }
 
   lastEncoded = encoded; //store this value for next time
 }
