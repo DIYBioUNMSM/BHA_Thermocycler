@@ -2,7 +2,7 @@
 
 <img src="preview.jpg" alt="DIY Thermocycler" style="width: 200px;" width=200 align="right" hspace=5 vspace=5 />This repo contains the designs and source files of a **DIY Thermocycler**. This device can be used to perform a polymerase chain reaction on DNA. Check out the corresponding [BHA lecture in the Syllabus](http://biohackacademy.github.io) for more information.
 
-##Navigation the repo
+##Navigating the repo
 
  	BHA_Thermocyler/					main repo
  	|-- Arduino Code/Thermocycler/		Arduino Code
