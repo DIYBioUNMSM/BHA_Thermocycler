@@ -316,33 +316,15 @@ void loop() {
     Serial.println(rotaryEncoderA.getValue());
     encoderValue = rotaryEncoderA.getValue();
   }
-  
-  // Read temperature by digital temp sensor if PCR is running
-  if(state == STATE_CYCLING) {
-    if(tempSensorType == 1) { // DS18B20 digital temperature sensor
-      tempSensor1.requestTemperatures();
-      tempSensor2.requestTemperatures();
-      double tTemp = tempSensor1.getTempCByIndex(0);
-      if(tTemp > 1) {
-        currentTemp = tTemp;
-      }
-      tTemp = tempSensor2.getTempCByIndex(0);
-      if(tTemp > 1) {
-        currentLidTemp = tTemp;
-      }
-    }
-  }
-  else if(tempSensorType == 0) {
-       // Read temperature by Thermistor
-       val=analogRead(0);            //Read the Analog port 0 and store the value in val
-       currentTemp=Thermister(val);  //Runs the fancy math function on the raw analog value
-       val=analogRead(1);            //Read the Analog port 1 and store the value in val
-       currentLidTemp=Thermister(val);  //Runs the fancy math function on the raw analog value
-  }
-  
+
+     val=analogRead(A0);            //Read the Analog port 0 and store the value in val
+     currentTemp=Thermister(val);  //Runs the fancy math function on the raw analog value
+     val=analogRead(1);            //Read the Analog port 1 and store the value in val
+     currentLidTemp=Thermister(val);  //Runs the fancy math function on the raw analog value
+    
   // Print temperature to computer via Serial
-  //Serial.print("Temperature: ");
-  //Serial.println(currentTemp);
+  Serial.print("Temperature: ");
+  Serial.println(currentTemp);
   //Serial.print("Lid Temperature: ");
   //Serial.println(currentLidTemp);
 
@@ -579,7 +561,9 @@ void machineUpdate(uint16_t dt) {
       if(showtime) { lcd.print(round((stageTime-(millis()-currentStageStartTime))/1000)); }
       lcd.setCursor(0,1);
       lcd.print(F("Temp "));
-      lcd.print(round(currentTemp));
+      lcd.print(round(currentTemp));      
+      Serial.print("temp on LCD: ");
+      Serial.println(round(currentTemp));
       lcd.print("/");
       lcd.print(stageTemp);
       lcd.print("  ");
