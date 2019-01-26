@@ -23,4 +23,4 @@ Make sure you have an Arduino Leonardo or equivalent microprocessor. Also get en
 |15|1|Breadboard|[Farnell](http://nl.farnell.com/pro-signal/psg-bb-400/breadboard-400-pin-white/dp/2503765). [iPrototype](https://iprototype.nl/products/accessoires/breadboards-prints/halfbreadboard)|2.56|
 |16|1|Custom milled PCR tube block|||
 
-*Estimate total*: EUR 57.68
+*Estimate total*: EUR 40.55 (*excluding the aluminium block*)
